@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1
+# Construye tienda-web desde su repositorio público (commit exacto) y la sirve con nginx en el puerto 5173.
+
+FROM node:22-alpine AS build
+RUN apk add --no-cache git
+ARG REF
+# Direcciones que el NAVEGADOR usa para hablar con las APIs y Keycloak (por eso son localhost, no nombres de Docker).
+ARG VITE_PRODUCTOS_URL=http://localhost:8080
+ARG VITE_CARRITO_URL=http://localhost:8081
+ARG VITE_PEDIDOS_URL=http://localhost:8082
+ARG VITE_KEYCLOAK_URL=http://localhost:8180
+WORKDIR /src
+RUN git init -q . && git fetch -q --depth 1 https://github.com/llocado/tienda-web.git "${REF}" && git checkout -q FETCH_HEAD
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
+RUN npm run build
+
+FROM nginx:alpine
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /src/dist /usr/share/nginx/html

@@ -1,0 +1,77 @@
+{
+  "realm": "supermercado",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "roles": {
+    "realm": [
+      {
+        "name": "cliente",
+        "description": "Cliente que compra en el supermercado"
+      },
+      {
+        "name": "admin",
+        "description": "Administrador del catalogo/operacion"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "supermercado-web",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "cliente1",
+      "enabled": true,
+      "firstName": "Cliente",
+      "lastName": "Uno",
+      "email": "cliente1@supermercado.test",
+      "emailVerified": true,
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "cliente1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "cliente"
+      ]
+    },
+    {
+      "username": "admin1",
+      "enabled": true,
+      "firstName": "Admin",
+      "lastName": "Uno",
+      "email": "admin1@supermercado.test",
+      "emailVerified": true,
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ]
+    }
+  ]
+}

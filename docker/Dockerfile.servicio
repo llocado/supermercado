@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1
+# Construye cualquiera de los cuatro servicios Spring Boot a partir de su repositorio público, en una versión
+# (commit) exacta. No hace falta ningún token: app-productos compila lib-domain-foods desde su código fuente.
+
+FROM eclipse-temurin:21-jdk AS build
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
+ARG REPO
+ARG REF
+ARG LIB_REF=""
+WORKDIR /src
+RUN git init -q servicio && cd servicio \
+    && git fetch -q --depth 1 "https://github.com/llocado/${REPO}.git" "${REF}" && git checkout -q FETCH_HEAD
+RUN if [ -n "${LIB_REF}" ]; then \
+      git init -q lib-domain-foods && cd lib-domain-foods \
+      && git fetch -q --depth 1 https://github.com/llocado/lib-domain-foods.git "${LIB_REF}" && git checkout -q FETCH_HEAD; \
+    fi
+# La caché de Gradle se comparte entre los servicios para no bajar las mismas dependencias cuatro veces.
+RUN --mount=type=cache,target=/root/.gradle,sharing=locked \
+    cd servicio && chmod +x gradlew \
+    && ./gradlew bootJar --no-daemon -x test ${LIB_REF:+--include-build ../lib-domain-foods} \
+    && cp "$(ls build/libs/*.jar | grep -v plain)" /app.jar
+
+FROM eclipse-temurin:21-jre-alpine
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring:spring
+COPY --from=build /app.jar /app.jar
+# Memoria acotada: seis procesos Java en una sola máquina.
+ENV JAVA_TOOL_OPTIONS="-Xmx320m -XX:+UseSerialGC"
+ENTRYPOINT ["java", "-jar", "/app.jar"]

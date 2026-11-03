@@ -13,6 +13,26 @@ hablan por **eventos**. El pago es simulado a propósito; lo que importa aquí e
 
 *Un recorrido real: búsqueda, login en Keycloak, agregar desde el listado con la cantidad elegida, carrito, **Pagar** y el pedido que pasa a "Pagado" cuando los eventos entre servicios terminan.*
 
+## Probar en 5 minutos
+
+Solo necesitas **Docker** (con unos 4 GB de RAM libres para Docker) y `git`. No hace falta Java, Node ni ningún token:
+
+```bash
+git clone https://github.com/llocado/supermercado.git
+cd supermercado
+./demo.sh
+```
+
+La primera vez compila los cuatro servicios y la tienda desde sus repositorios públicos (**unos 5 minutos**, medido en un MacBook; las siguientes
+veces arranca en menos de un minuto). Al terminar, abre **http://localhost:5173**, entra con `cliente1` / `cliente1` (usuario solo de la demo),
+agrega productos y pulsa **Pagar** en el carrito: el pedido pasa a *Pagado* cuando los eventos viajan por RabbitMQ entre los servicios. Un total
+sobre 100.000 CLP se rechaza a propósito. Para apagar todo y borrar los datos: `./demo-down.sh`.
+
+- Todo queda ligado a `127.0.0.1` (nada es visible desde tu red) y las bases de datos no se publican.
+- La demo construye **versiones fijas** de cada repositorio (los commits están en [`.env`](.env)), así que sigue funcionando aunque los repositorios avancen.
+- `demo.sh` espera a que existan **todas las colas** de RabbitMQ antes de dar el sistema por listo y carga 15 productos de ejemplo.
+- Puertos usados: 5173 (tienda), 8080–8083 (servicios), 8180 (Keycloak) y 15672 (consola de RabbitMQ, `supermercado` / `supermercado`).
+
 ## Lo que conviene mirar primero (5 minutos)
 
 1. **El flujo de una compra, con diagramas:** [`docs/flujo-completo.md`](docs/flujo-completo.md) — del carrito al pedido pagado y al stock
@@ -59,7 +79,7 @@ servicio (a `productos`, para fijar precio y avisar de stock); todo lo demás vi
 | [`pedidos-service`](https://github.com/llocado/pedidos-service) | Crea pedidos desde eventos y sigue su estado | Spring Boot, RabbitMQ, Postgres |
 | [`pagos-service`](https://github.com/llocado/pagos-service) | Pago simulado con *outbox* transaccional | Spring Boot, RabbitMQ, Postgres |
 | [`tienda-web`](https://github.com/llocado/tienda-web) | La tienda: catálogo, login, carrito, pagar, pedidos. **Área en aprendizaje**: se construyó por pasos con IA | React 19, TypeScript estricto, Vite, Vitest |
-| `supermercado-infra` | Keycloak y RabbitMQ en Docker (repo privado: trae credenciales de desarrollo) | Docker Compose |
+| `supermercado-infra` | Keycloak y RabbitMQ para desarrollo (repo privado: trae credenciales de desarrollo). La demo de arriba trae su propio compose | Docker Compose |
 
 ## Qué demuestra
 

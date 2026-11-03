@@ -1,0 +1,160 @@
+# Demo completa en un comando (ver ./demo.sh). Todo lo publicado queda ligado a 127.0.0.1: nada es visible desde la red.
+# Las bases de datos y RabbitMQ (AMQP) no se publican: solo viven dentro de la red de Docker.
+
+x-servicio: &servicio
+  restart: "no"
+  depends_on:
+    postgres: { condition: service_healthy }
+    rabbitmq: { condition: service_healthy }
+    keycloak: { condition: service_healthy }
+  environment: &entorno
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    RABBITMQ_HOST: rabbitmq
+    # Los tokens los emite Keycloak con el nombre público (localhost:8180, el que ve el navegador). Los servicios, desde
+    # dentro de Docker, bajan las claves por el nombre interno: por eso se indica jwk-set-uri además del emisor.
+    KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/supermercado
+    SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/supermercado/protocol/openid-connect/certs
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: demo-solo-local
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: supermercado
+      RABBITMQ_DEFAULT_PASS: supermercado
+    ports:
+      - "127.0.0.1:15672:15672" # UI de administración (usuario y clave: supermercado)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+      # Nombre público (el del navegador) y servidor de claves accesible también por el nombre interno "keycloak".
+      KC_HOSTNAME: http://localhost:8180
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      JAVA_OPTS_KC_HEAP: "-Xms64m -Xmx512m"
+    ports:
+      - "127.0.0.1:8180:8080"
+    volumes:
+      - ./keycloak/realm-demo.json:/opt/keycloak/data/import/realm-supermercado.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n' >&3 && grep -q 'UP' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  productos:
+    <<: *servicio
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.servicio
+      args: { REPO: app-productos, REF: "${REF_PRODUCTOS}", LIB_REF: "${REF_LIB}" }
+    environment:
+      <<: *entorno
+      DB_NAME: foodstore_db
+      DB_USER: foodstore_user
+      DB_PASSWORD: foodstore_password
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck: &salud
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 $${SERVER_PORT:-8080}"]
+      interval: 5s
+      timeout: 3s
+      retries: 40
+      start_period: 15s
+
+  carrito:
+    <<: *servicio
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.servicio
+      args: { REPO: carrito-service, REF: "${REF_CARRITO}" }
+    environment:
+      <<: *entorno
+      DB_NAME: carrito_db
+      DB_USER: carrito_user
+      DB_PASSWORD: carrito_password
+      PRODUCTOS_SERVICE_URL: http://productos:8080
+    ports:
+      - "127.0.0.1:8081:8081"
+    healthcheck:
+      <<: *salud
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8081"]
+
+  pedidos:
+    <<: *servicio
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.servicio
+      args: { REPO: pedidos-service, REF: "${REF_PEDIDOS}" }
+    environment:
+      <<: *entorno
+      DB_NAME: pedidos_db
+      DB_USER: pedidos_user
+      DB_PASSWORD: pedidos_password
+    ports:
+      - "127.0.0.1:8082:8082"
+    healthcheck:
+      <<: *salud
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8082"]
+
+  pagos:
+    <<: *servicio
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.servicio
+      args: { REPO: pagos-service, REF: "${REF_PAGOS}" }
+    environment:
+      <<: *entorno
+      DB_NAME: pagos_db
+      DB_USER: pagos_user
+      DB_PASSWORD: pagos_password
+    ports:
+      - "127.0.0.1:8083:8083"
+    healthcheck:
+      <<: *salud
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8083"]
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      args: { REF: "${REF_WEB}" }
+    ports:
+      - "127.0.0.1:5173:5173"
+
+  # Tarea puntual (no arranca con "up"): demo.sh la ejecuta cuando todos los servicios y sus colas ya existen.
+  cargador:
+    profiles: ["herramientas"]
+    image: python:3.12-alpine
+    depends_on:
+      productos: { condition: service_healthy }
+    volumes:
+      - ./scripts/cargar_datos.py:/cargar_datos.py:ro
+      - ./scripts/datos-productos.json:/datos/datos-productos.json:ro
+    command: ["python", "/cargar_datos.py"]
+
+volumes:
+  postgres_data:
