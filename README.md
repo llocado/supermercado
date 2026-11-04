@@ -5,7 +5,7 @@
 > **In English, in short:** a portfolio project that models the online sales of a neighbourhood supermarket as five small services
 > (catalog, cart, orders, payments, web store) talking through RabbitMQ events and secured with Keycloak (OAuth2 + PKCE). It focuses on the
 > hard parts of distributed systems: hexagonal architecture, transactional outbox, idempotent consumers, optimistic locking, dead-letter queues
-> and failure testing against real services. 749 automated tests, mutation testing, and a React + TypeScript storefront (built step by step with AI assistance while learning front end) verified in a real
+> and failure testing against real services. 801 automated tests, mutation testing, and a React + TypeScript storefront (built step by step with AI assistance while learning front end) verified in a real
 > browser. Documentation is in Spanish; the diagrams in [`docs/flujo-completo.md`](docs/flujo-completo.md) are self-explanatory.
 
 Sistema de ventas online para un supermercado de barrio: catálogo, carrito, pedido, pago y stock, repartidos en servicios pequeños que se
@@ -90,22 +90,22 @@ servicio (a `productos`, para fijar precio y avisar de stock); todo lo demás vi
 | **Arquitectura hexagonal** | `domain` / `application` (casos de uso y puertos) / `infrastructure` (adaptadores); el dominio del catálogo vive en una biblioteca aparte. | cualquier servicio, README de [`app-productos`](https://github.com/llocado/app-productos) |
 | **Mensajería fiable** | *Outbox* transaccional, publicación con `mandatory` y confirmaciones, reintentos acotados (1 + 3) y DLQ, consumidores **idempotentes** por `eventId`. | [flujo §4–6](docs/flujo-completo.md) |
 | **Consistencia y concurrencia** | Bloqueo optimista (`@Version`), descuento de stock "todo o nada", `saveAndFlush` para que un fallo de INSERT ocurra **antes** de publicar, claves de idempotencia en el checkout. | [flujo §10](docs/flujo-completo.md), README de `pedidos-service` |
-| **Seguridad** | Keycloak (OAuth2/OIDC), servicios como *Resource Server* JWT, login del front con **PKCE** y token solo en memoria, CORS con origen explícito, logs sin secretos. | [riesgos](docs/riesgos-conocidos.md), [flujo §8](docs/flujo-completo.md) |
+| **Seguridad** | Keycloak (OAuth2/OIDC), **todos** los servicios como *Resource Server* JWT (en el catálogo, leer es público y escribir exige rol `admin`), login del front con **PKCE** y token solo en memoria, CORS con origen explícito, logs sin secretos. | [riesgos](docs/riesgos-conocidos.md), [flujo §8](docs/flujo-completo.md) |
 | **Pruebas** | Unitarias, de integración con Postgres y RabbitMQ reales (Testcontainers), de mutación (PIT), de fallo con servicios reales y de interfaz en un navegador real. | tabla de abajo |
 | **Front (en aprendizaje)** | React 19, TypeScript estricto, datos de la red validados con *type guards*, la URL como estado, límite de errores, espera acotada del pedido (consistencia eventual). | [`tienda-web`](https://github.com/llocado/tienda-web) |
-| **Operación** | Logging `clave=valor` con `requestId`/`correlationId`, volumen de log medido con dependencias caídas, migraciones con Liquibase. | README de cada servicio |
+| **Operación** | Logging `clave=valor` con `requestId`/`correlationId`, volumen de log medido con dependencias caídas, migraciones con Liquibase, **retención de las tablas de eventos** (tarea diaria, en lotes, sin tocar lo pendiente). | README de cada servicio |
 
-### En números (medidos al 2026-11-03)
+### En números (medidos al 2026-11-04)
 
 | | Pruebas | Mutación (PIT) |
 |---|---|---|
 | `lib-domain-foods` | 72 | 62 % |
-| `app-productos` | 118 (87 + 31 de integración) | 91 % |
-| `carrito-service` | 164 (130 + 34) | 73 % |
-| `pedidos-service` | 124 (97 + 27) | 73 % |
-| `pagos-service` | 89 (78 + 11) | 85 % |
+| `app-productos` | 138 (103 + 35 de integración) | 93 % |
+| `carrito-service` | 174 (137 + 37) | 74 % |
+| `pedidos-service` | 134 (104 + 30) | 73 % |
+| `pagos-service` | 101 (86 + 15) | 85 % |
 | `tienda-web` | 182 | — |
-| **Total** | **749**, todas en verde | |
+| **Total** | **801**, todas en verde | |
 
 La mutación mide el dominio y los casos de uso: cambia el código en pequeño y comprueba que algún test falle. Es informativa, no un umbral.
 

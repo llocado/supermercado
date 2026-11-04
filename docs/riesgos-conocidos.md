@@ -17,18 +17,18 @@ desarrollo. Aquí está, sin maquillar, lo que se resolvió y lo que queda pendi
 | Front | Login por redirección con **PKCE**; token solo en memoria (nada en `localStorage`, `sessionStorage` ni cookies); sin `dangerouslySetInnerHTML`; datos de la red validados con *type guards*; URL acotada. |
 | CORS | Origen explícito (`http://localhost:5173`), nunca `*`, sin cookies; carrito abre lectura/escritura, pedidos y catálogo solo lectura. |
 | Cliente Keycloak de la tienda | `redirectUris` y `webOrigins` acotados al origen del front; PKCE `S256` exigido. |
+| Catálogo con autenticación | `app-productos` valida JWT: leer el catálogo es público (lo usan la tienda y el carrito), crear/editar/borrar y cargar stock exigen rol `admin` (sin token 401, rol `cliente` 403). Probado con servicios reales y entrada hostil. |
+| Retención de eventos | Una tarea diaria en los cuatro servicios borra en lotes `eventos_procesados` de más de 30 días y los `eventos_salida` ya publicados de más de 7; los pendientes jamás. Plazos validados al arrancar. Con la base caída: un aviso de una línea y se recupera sola. |
 | Calidad | Cobertura (JaCoCo), tests de mutación (PIT) y análisis estático (SonarQube) en el flujo de trabajo; pruebas de fallo con servicios reales (dependencia caída, mensaje venenoso, concurrencia, entrada hostil). |
 
 ## Lo que queda pendiente
 
 | Riesgo | Cuándo se cierra | Cómo |
 |---|---|---|
-| **El catálogo no exige autenticación**: cualquiera que alcance `app-productos` puede crear, editar o borrar productos. | Al construir un API Gateway o antes de exponerlo fuera de `localhost`. | Validar JWT y exigir rol `admin` para escribir; la lectura puede seguir pública. |
-| **Keycloak de desarrollo**: sin HTTPS (`sslRequired: none`), registro abierto, sin protección contra fuerza bruta, usuarios de prueba y credenciales de administrador por defecto en el repo. | Antes de cualquier despliegue. | `sslRequired: external`, registro desactivado o con aprobación, `bruteForceProtected`, sin usuarios de prueba, credenciales por variables de entorno. |
+| **Keycloak de desarrollo**: sin HTTPS (`sslRequired: none`), registro abierto (en el realm de la demo ya está cerrado), sin protección contra fuerza bruta, usuarios de prueba y credenciales de administrador por defecto en el repo. | Antes de cualquier despliegue. | `sslRequired: external`, registro desactivado o con aprobación, `bruteForceProtected`, sin usuarios de prueba, credenciales por variables de entorno. |
 | **`directAccessGrants` activo** en el cliente de la tienda (lo usan Bruno y curl para pedir tokens). | Al preparar producción. | Un cliente aparte solo para pruebas y apagarlo en el de la tienda. |
 | **Credenciales de desarrollo por defecto** en `application.yml` y `docker-compose.yml`. | Junto con el despliegue real. | Quitar los valores por defecto (que falle si falta la variable) y usar secretos del entorno. |
 | **Sin rate limiting**. | Con el API Gateway. | Limitar tasa por usuario/IP. |
-| **Tablas que crecen sin límite** (`eventos_procesados`, `eventos_salida`) en los cuatro servicios. | Antes de operar con volumen real. | Tarea programada por antigüedad, con un plazo mayor que la reentrega máxima de RabbitMQ. |
 | **El pago es simulado** y determinista (se rechaza sobre 100.000 CLP). | Cuando se integre una pasarela real. | Adaptador hacia la pasarela y conciliación; no se almacenan datos de tarjeta. |
 | **Un `pago.aprobado` falsificado** con otro `eventId` y el mismo `pagoId` descontaría el stock dos veces (la idempotencia es por `eventId`). Requiere acceso al broker. | Con permisos de RabbitMQ por servicio. | Usuarios de broker con permisos mínimos y deduplicar también por `pagoId`. |
 | **En productos, 4 conflictos de versión seguidos** (solo con ingresos de stock concurrentes) llevan el mensaje a la DLQ sin descontar ni publicar el rechazo. | Con monitoreo de colas. | Vigilar la DLQ y alertar; reprocesar manualmente. |
