@@ -32,6 +32,19 @@
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:5173/*"
       }
+    },
+    {
+      "clientId": "demo-cargador",
+      "name": "Cargador del catalogo de la demo",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "demo-cargador-solo-local",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "redirectUris": [],
+      "webOrigins": []
     }
   ],
   "users": [
@@ -69,6 +82,14 @@
           "temporary": false
         }
       ],
+      "realmRoles": [
+        "admin"
+      ]
+    },
+    {
+      "username": "service-account-demo-cargador",
+      "enabled": true,
+      "serviceAccountClientId": "demo-cargador",
       "realmRoles": [
         "admin"
       ]
