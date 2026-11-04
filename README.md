@@ -1,5 +1,7 @@
 # Supermercado: ventas online para el comercio de barrio
 
+[![app-productos](https://github.com/llocado/app-productos/actions/workflows/tests.yml/badge.svg)](https://github.com/llocado/app-productos/actions/workflows/tests.yml) [![carrito-service](https://github.com/llocado/carrito-service/actions/workflows/tests.yml/badge.svg)](https://github.com/llocado/carrito-service/actions/workflows/tests.yml) [![pedidos-service](https://github.com/llocado/pedidos-service/actions/workflows/tests.yml/badge.svg)](https://github.com/llocado/pedidos-service/actions/workflows/tests.yml) [![pagos-service](https://github.com/llocado/pagos-service/actions/workflows/tests.yml/badge.svg)](https://github.com/llocado/pagos-service/actions/workflows/tests.yml) [![tienda-web](https://github.com/llocado/tienda-web/actions/workflows/tests.yml/badge.svg)](https://github.com/llocado/tienda-web/actions/workflows/tests.yml)
+
 > **In English, in short:** a portfolio project that models the online sales of a neighbourhood supermarket as five small services
 > (catalog, cart, orders, payments, web store) talking through RabbitMQ events and secured with Keycloak (OAuth2 + PKCE). It focuses on the
 > hard parts of distributed systems: hexagonal architecture, transactional outbox, idempotent consumers, optimistic locking, dead-letter queues
